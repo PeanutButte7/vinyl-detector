@@ -11,6 +11,12 @@ echo "==> Installing system dependencies..."
 sudo apt update -q
 sudo apt install -y libportaudio2 python3-pip python3-venv git
 
+echo ""
+read -rp "Enter your Tuneshine ID (the 4 letters/numbers on the back of your device, e.g. A6E0): " TUNESHINE_ID
+echo "TUNESHINE_HOST=tuneshine-${TUNESHINE_ID}.local" > "$REPO_DIR/.env"
+echo "    -> Set to tuneshine-${TUNESHINE_ID}.local"
+echo ""
+
 echo "==> Setting up Python virtual environment..."
 cd "$REPO_DIR"
 python3 -m venv .venv

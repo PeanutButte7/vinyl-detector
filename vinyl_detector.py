@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import os
 import signal
 import sys
 import time
@@ -218,7 +219,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Vinyl Detector — Tuneshine companion")
     parser.add_argument(
         "--host",
-        help="Tuneshine hostname (e.g. tuneshine-ABCD.local). Skips mDNS discovery.",
+        default=os.environ.get("TUNESHINE_HOST"),
+        help="Tuneshine hostname (e.g. tuneshine-ABCD.local). Skips mDNS discovery. Can also be set via TUNESHINE_HOST environment variable.",
     )
     parser.add_argument(
         "--max-misses",

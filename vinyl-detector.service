@@ -7,6 +7,7 @@ Wants=network-online.target
 Type=simple
 User=raspberrypi
 WorkingDirectory=/home/raspberrypi/vinyl-detector
+EnvironmentFile=-/home/raspberrypi/vinyl-detector/.env
 ExecStart=/home/raspberrypi/vinyl-detector/.venv/bin/python vinyl_detector.py
 Restart=on-failure
 RestartSec=10
