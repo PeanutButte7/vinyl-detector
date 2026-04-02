@@ -1,0 +1,19 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# Claude Code
+.claude/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+sync.log

@@ -1,0 +1,15 @@
+[Unit]
+Description=Vinyl Detector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=raspberrypi
+WorkingDirectory=/home/raspberrypi/vinyl-detector
+ExecStart=/home/raspberrypi/vinyl-detector/.venv/bin/python vinyl_detector.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
