@@ -25,11 +25,11 @@ sudo systemctl start "$SERVICE"
 echo "==> Granting passwordless sudo for service restart (required for sync script)..."
 echo "raspberrypi ALL=(ALL) NOPASSWD: /bin/systemctl restart $SERVICE" | sudo tee /etc/sudoers.d/vinyl-detector > /dev/null
 
-echo "==> Setting up cron job for auto-sync (every minute)..."
-(crontab -l 2>/dev/null; echo "* * * * * /home/raspberrypi/vinyl-detector/scripts/sync.sh >> /home/raspberrypi/vinyl-detector/sync.log 2>&1") | crontab -
-
 chmod +x "$REPO_DIR/scripts/sync.sh"
 
 echo ""
 echo "All done! Vinyl Detector is running. Check status with:"
 echo "  sudo systemctl status $SERVICE"
+echo ""
+echo "To enable auto-sync from GitHub, run:"
+echo "  (crontab -l 2>/dev/null; echo \"* * * * * $REPO_DIR/scripts/sync.sh >> $REPO_DIR/sync.log 2>&1\") | crontab -"
