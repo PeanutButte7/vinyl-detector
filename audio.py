@@ -16,13 +16,16 @@ _MIN_RMS = 50  # below this is effectively silence — don't normalize, let Shaz
 
 def record_snippet(duration: float = 6.0) -> bytes:
     """Record `duration` seconds from the default mic, return WAV bytes."""
-    audio = sd.rec(
-        int(duration * SAMPLE_RATE),
-        samplerate=SAMPLE_RATE,
-        channels=CHANNELS,
-        dtype="int16",
-    )
-    sd.wait()
+    try:
+        audio = sd.rec(
+            int(duration * SAMPLE_RATE),
+            samplerate=SAMPLE_RATE,
+            channels=CHANNELS,
+            dtype="int16",
+        )
+        sd.wait()
+    except sd.PortAudioError as exc:
+        raise OSError(f"Microphone not available: {exc}") from exc
 
     rms = np.sqrt(np.mean(audio.astype(np.float32) ** 2))
     if rms >= _MIN_RMS:
