@@ -51,7 +51,8 @@ This will:
 - Install system dependencies (`libportaudio2`, etc.)
 - Create a Python virtual environment and install requirements
 - Register and start a `systemd` service so the app runs on boot
-- Set up a cron job that polls GitHub every minute and auto-restarts the service when new changes are pushed
+
+Optionally, set up a cron job that polls GitHub every minute and auto-restarts the service when new changes are pushed (the install script will print the command).
 
 ## Usage
 
@@ -74,8 +75,11 @@ python vinyl_detector.py -v
 | `--max-misses N` | `3` | Consecutive recognition failures before marking music stopped |
 | `--cycle-sleep SEC` | `2.0` | Seconds between listen cycles while music is playing |
 | `--idle-sleep SEC` | `8.0` | Seconds between listen cycles when idle |
-| `--record-duration SEC` | `6.0` | Audio snippet length sent to Shazam |
+| `--record-duration SEC` | `12.0` | Audio snippet length sent to Shazam |
 | `--handoff-timeout SEC` | `120` | Seconds idle before clearing display and handing back to Tuneshine |
+| `--searching-grace SEC` | `20` | Seconds after music stops before switching display to searching |
+| `--recognition-cooldown SEC` | `30` | Seconds to skip re-identification after a successful match |
+| `--no-preprocess` | off | Disable vinyl audio preprocessing (high-pass filter, click removal) |
 | `-v, --verbose` | off | Enable debug logging |
 
 ## How it works

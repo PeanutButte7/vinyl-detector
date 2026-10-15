@@ -101,8 +101,18 @@ def _ensure_contrast(
     return (255, 255, 255) if white_ratio >= black_ratio else (0, 0, 0)
 
 
+# ── Album art color cache ─────────────────────────────────────────────────────
+# Avoids re-downloading and re-extracting colors for the same album art URL
+# every recognition cycle. Max 20 entries — well within memory for this app.
+_color_cache: dict[str, tuple[tuple[int, ...], ...]] = {}
+_COLOR_CACHE_MAX = 20
+
+
 def extract_colors(album_art_url: str) -> tuple[tuple[int, ...], ...]:
     """Fetch album art and extract a 3-color palette: (bg, text, accent)."""
+    if album_art_url in _color_cache:
+        return _color_cache[album_art_url]
+
     try:
         resp = requests.get(album_art_url, timeout=10)
         resp.raise_for_status()
@@ -113,12 +123,21 @@ def extract_colors(album_art_url: str) -> tuple[tuple[int, ...], ...]:
         bg = _dim(palette[0], 0.55)
         text = _ensure_contrast(bg, palette[1])
         accent = _ensure_contrast(bg, palette[2] if len(palette) > 2 else palette[1])
-        return (bg, text, accent)
-    except requests.RequestException:
-        log.warning("Color extraction failed (network), using defaults")
+        result = (bg, text, accent)
+        # Cache the result; evict oldest if at capacity
+        if len(_color_cache) >= _COLOR_CACHE_MAX:
+            oldest = next(iter(_color_cache))
+            del _color_cache[oldest]
+        _color_cache[album_art_url] = result
+        return result
+    except requests.RequestException as exc:
+        log.warning("Color extraction failed (network): %s", exc)
+        return ((20, 20, 20), (255, 255, 255), (180, 80, 80))
+    except (ValueError, IndexError) as exc:
+        log.warning("Color extraction failed (parse): %s", exc)
         return ((20, 20, 20), (255, 255, 255), (180, 80, 80))
     except Exception:
-        log.warning("Color extraction failed, using defaults")
+        log.warning("Color extraction failed unexpectedly", exc_info=True)
         return ((20, 20, 20), (255, 255, 255), (180, 80, 80))
 
 

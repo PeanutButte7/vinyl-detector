@@ -1,10 +1,11 @@
 #!/bin/bash
 # Polls GitHub for changes and restarts the service if there are any.
-# Set up as a cron job: * * * * * /home/raspberrypi/vinyl-detector/scripts/sync.sh >> /home/raspberrypi/vinyl-detector/sync.log 2>&1
+# Set up as a cron job: * * * * * /path/to/vinyl-detector/scripts/sync.sh >> /path/to/vinyl-detector/sync.log 2>&1
 
 set -e
 
-REPO_DIR="/home/raspberrypi/vinyl-detector"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SERVICE="vinyl-detector"
 
 cd "$REPO_DIR"

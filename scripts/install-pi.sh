@@ -4,8 +4,10 @@
 
 set -e
 
-REPO_DIR="/home/raspberrypi/vinyl-detector"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SERVICE="vinyl-detector"
+CURRENT_USER="$(whoami)"
 
 echo "==> Installing system dependencies..."
 sudo apt update -q
@@ -22,14 +24,34 @@ cd "$REPO_DIR"
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt -q
 
+echo "==> Generating systemd service file..."
+cat > "$REPO_DIR/vinyl-detector.generated.service" <<EOF
+[Unit]
+Description=Vinyl Detector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=$CURRENT_USER
+WorkingDirectory=$REPO_DIR
+EnvironmentFile=-$REPO_DIR/.env
+ExecStart=$REPO_DIR/.venv/bin/python vinyl_detector.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 echo "==> Installing systemd service..."
-sudo cp "$REPO_DIR/vinyl-detector.service" /etc/systemd/system/
+sudo cp "$REPO_DIR/vinyl-detector.generated.service" /etc/systemd/system/vinyl-detector.service
 sudo systemctl daemon-reload
 sudo systemctl enable "$SERVICE"
 sudo systemctl start "$SERVICE"
 
 echo "==> Granting passwordless sudo for service restart (required for sync script)..."
-echo "raspberrypi ALL=(ALL) NOPASSWD: /bin/systemctl restart $SERVICE" | sudo tee /etc/sudoers.d/vinyl-detector > /dev/null
+echo "$CURRENT_USER ALL=(ALL) NOPASSWD: /bin/systemctl restart $SERVICE" | sudo tee /etc/sudoers.d/vinyl-detector > /dev/null
 
 chmod +x "$REPO_DIR/scripts/sync.sh"
 

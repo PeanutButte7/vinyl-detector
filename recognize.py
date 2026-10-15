@@ -95,8 +95,10 @@ async def _enrich_from_itunes(track_adam_id: str, album_adam_id: str, info: Trac
         log.warning("iTunes enrichment network error: %s", exc)
     except asyncio.TimeoutError:
         log.warning("iTunes enrichment timed out")
+    except (KeyError, ValueError, TypeError) as exc:
+        log.warning("iTunes enrichment parse error: %s", exc)
     except Exception:
-        log.warning("iTunes enrichment failed", exc_info=True)
+        log.warning("iTunes enrichment failed unexpectedly", exc_info=True)
 
 
 async def enrich_track(info: TrackInfo) -> None:
@@ -116,8 +118,10 @@ async def enrich_track(info: TrackInfo) -> None:
     except asyncio.TimeoutError:
         log.debug("track_about timed out for key=%s", info.shazam_key)
         return
-    except Exception as exc:
+    except (ValueError, TypeError, aiohttp.ClientError) as exc:
         log.debug("track_about failed for key=%s: %s", info.shazam_key, exc)
+    except Exception as exc:
+        log.debug("track_about failed unexpectedly for key=%s: %s", info.shazam_key, exc, exc_info=True)
         return
 
     if not isinstance(about, dict):
