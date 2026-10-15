@@ -120,6 +120,7 @@ async def enrich_track(info: TrackInfo) -> None:
         return
     except (ValueError, TypeError, aiohttp.ClientError) as exc:
         log.debug("track_about failed for key=%s: %s", info.shazam_key, exc)
+        return
     except Exception as exc:
         log.debug("track_about failed unexpectedly for key=%s: %s", info.shazam_key, exc, exc_info=True)
         return

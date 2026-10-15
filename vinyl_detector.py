@@ -3,12 +3,23 @@
 
 from __future__ import annotations
 
+import os
+import sys
+
+# With no CLI args (how the Pi's existing systemd unit starts it), hand over to app.py so an
+# already-installed service picks up tram mode + the portal after a git pull. This runs before
+# the audio imports below, so tram mode never loads sounddevice/PortAudio.
+# `python vinyl_detector.py --standalone` (or any flags, or VINYL_STANDALONE=1) = old behavior.
+if __name__ == "__main__" and len(sys.argv) == 1 and os.environ.get("VINYL_STANDALONE") != "1":
+    import app
+
+    app.main()
+    sys.exit(0)
+
 import argparse
 import asyncio
 import logging
-import os
 import signal
-import sys
 import time
 
 import requests
@@ -368,13 +379,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    # With no CLI args (how the Pi's existing systemd unit starts it), hand over to app.py so
-    # an already-installed service picks up tram mode + the portal after a git pull.
-    # Run `python vinyl_detector.py --standalone` (or with any flags) for the old behavior.
-    if len(sys.argv) == 1 and os.environ.get("VINYL_STANDALONE") != "1":
-        import app
-        app.main()
-    else:
-        if "--standalone" in sys.argv:
-            sys.argv.remove("--standalone")
-        main()
+    if "--standalone" in sys.argv:
+        sys.argv.remove("--standalone")
+    main()

@@ -106,12 +106,16 @@ class Manager:
             self._thread.start()
             log.info("Mode -> %s", mode)
 
-    def _guard(self, target, stop):
-        try:
-            target(stop)
-        except Exception as exc:  # noqa: BLE001
-            log.exception("Mode %s crashed", self.mode)
-            self.status["error"] = f"crashed: {exc}"
+    def _guard(self, target, stop, retry_s: float = 30.0):
+        """Run the mode; if it crashes (e.g. Tuneshine not found), retry until stopped."""
+        while not stop.is_set():
+            try:
+                target(stop)
+                return
+            except Exception as exc:  # noqa: BLE001
+                log.exception("Mode %s crashed, retrying in %.0fs", self.mode, retry_s)
+                self.status["error"] = f"crashed: {exc}"
+                stop.wait(retry_s)
 
     def _stop_current(self, timeout: float = 20.0) -> None:
         if self._stop:
@@ -203,14 +207,19 @@ def main() -> None:
         print(f"wrote {tram_mode.dry_run()}")
         return
     mgr = Manager(TuneshineClient(host=a.host))
-    srv = start_portal(mgr, a.bind, a.port)
+    try:
+        srv = start_portal(mgr, a.bind, a.port)
+    except OSError as exc:  # port busy etc. -> keep the display running without portal
+        log.error("Portal failed to start on %s:%d: %s", a.bind, a.port, exc)
+        srv = None
     done = threading.Event()
     for s in (signal.SIGINT, signal.SIGTERM):
         signal.signal(s, lambda *_: done.set())
     mgr.set_mode(a.mode or load_mode(), persist=bool(a.mode))
     done.wait()
     log.info("Shutting down…")
-    srv.shutdown()
+    if srv:
+        srv.shutdown()
     mgr.shutdown()
 
 

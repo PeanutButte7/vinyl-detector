@@ -102,3 +102,54 @@ def test_fetch_params():
     kw = s.get.call_args.kwargs
     assert kw["headers"] == {"X-Access-Token": "KEY"}
     assert ("ids[]", "U873Z1P") in kw["params"] and ("minutesBefore", "15") in kw["params"]
+
+
+def test_row_fits_64px_worst_case():
+    from PIL import Image, ImageDraw
+    d = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+    f = tram_display._font()
+    for label, clock, delay in (("-15m", "08:08", "+12"), ("now", "18:59", "+125"), ("88m", "09:38", "+1")):
+        assert tram_display._width(d, f, *tram_display._fit(d, f, label, clock, delay)) <= 64
+    assert tram_display._fit(d, f, "4m", "08:14", "+2") == ("4m", "08:14", "+2")  # common case untouched
+
+
+def test_canceled_trip_skipped():
+    data = json.loads(json.dumps(DATA))
+    for dep in data["departures"]:
+        if dep["departure_timestamp"]["predicted"].startswith("2026-10-16T08:14"):
+            dep["trip"]["is_canceled"] = True
+    assert [x.when.minute for x in tm.select(data, NOW, cfg())[1]] == [19]
+
+
+def test_window_end_clears_our_image_even_under_music():
+    c = _client({"imageSource": "remote", "remoteMetadata": {"idle": False},
+                 "localMetadata": {"serviceName": "Tram", "idle": True}})
+    tm.tick(cfg(), c, lambda: DATA, NOW.replace(hour=20, minute=1))
+    c.clear.assert_called_once_with(preserve_image=False)
+
+
+def test_unexpected_error_does_not_kill_loop(monkeypatch):
+    import threading
+    calls = []
+    def boom(*a, **k):
+        calls.append(1)
+        if len(calls) >= 2:
+            stop.set()
+        raise KeyError("weird data")
+    monkeypatch.setattr(tm, "tick", boom)
+    stop = threading.Event()
+    status = {}
+    c = cfg(key="K", stops=[], stop_ids=["U873Z1P"], poll=1)
+    c["tz"] = TZ
+    tm.run(_client({}), stop, status, c)
+    assert len(calls) == 2 and "KeyError" in status["error"]
+
+
+def test_no_key_waits_quietly():
+    import threading
+    stop = threading.Event()
+    c = _client({})
+    t = threading.Thread(target=tm.run, args=(c, stop, {}, cfg(key="")))
+    t.start(); stop.set(); t.join(2)
+    assert not t.is_alive()
+    c.get_state.assert_not_called()

@@ -172,5 +172,10 @@ def music_playing(state: dict, own_service: str) -> bool:
 
 
 def ours_on_screen(state: dict, own_service: str) -> bool:
+    """True if our local image is set, even if remote music currently covers it.
+
+    An idle+overridable local image stays stored while Spotify etc. play and is restored
+    afterwards, so it must be cleared even when imageSource is "remote".
+    """
     local = state.get("localMetadata") or {}
-    return state.get("imageSource") == "local" and local.get("serviceName") == own_service
+    return local.get("serviceName") == own_service

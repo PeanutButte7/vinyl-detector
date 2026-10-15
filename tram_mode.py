@@ -114,6 +114,9 @@ def run(client: TuneshineClient, stop: threading.Event, status: dict, cfg: dict 
             except (requests.RequestException, RuntimeError) as exc:
                 log.warning("Tram cycle failed: %s", exc)
                 status["error"] = str(exc)
+            except Exception as exc:  # noqa: BLE001 - bad API data etc. must not kill the loop
+                log.exception("Tram cycle crashed")
+                status["error"] = f"{type(exc).__name__}: {exc}"
             now = dt.datetime.now().timestamp()
             stop.wait(cfg["poll"] - now % cfg["poll"])
     finally:

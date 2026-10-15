@@ -39,6 +39,8 @@ def parse(data: dict, platforms=(), direction_words=(), lines=()) -> list[Depart
         dest = (d.get("trip", {}) or {}).get("headsign", "")
         if direction_words and not any(w.lower() in dest.lower() for w in direction_words):
             continue
+        if (d.get("trip") or {}).get("is_canceled"):
+            continue
         ts = d.get("departure_timestamp", {}) or {}
         when = ts.get("predicted") or ts.get("scheduled")
         if not when:
@@ -53,7 +55,7 @@ def parse(data: dict, platforms=(), direction_words=(), lines=()) -> list[Depart
 def fetch(api_key: str, stop_names: list[str], limit: int = 20, session=requests, stop_ids=()) -> dict:
     params = ([("ids[]", i) for i in stop_ids] if stop_ids else [("names[]", n) for n in stop_names]) + [
         ("mode", "departures"), ("limit", str(limit)), ("minutesAfter", "90"), ("minutesBefore", "15"),
-        ("order", "real"), ("routeTypes", "0"),
+        ("order", "real"), ("skip[]", "canceled"),
     ]
     r = session.get(URL, params=params, headers={"X-Access-Token": api_key}, timeout=10)
     r.raise_for_status()
