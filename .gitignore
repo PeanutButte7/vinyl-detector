@@ -20,3 +20,10 @@ build/
 # Logs
 *.log
 sync.log
+
+# Runtime mode + tram previews
+mode.json
+mode.tmp
+preview.png
+preview_64.png
+tests/.mode-test.json

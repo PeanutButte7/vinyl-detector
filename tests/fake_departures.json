@@ -1,0 +1,128 @@
+{
+ "departures": [
+  {
+   "route": {
+    "short_name": "8",
+    "type": 0
+   },
+   "trip": {
+    "headsign": "Nádraží Podbaba"
+   },
+   "stop": {
+    "platform_code": "A"
+   },
+   "departure_timestamp": {
+    "scheduled": "2026-10-16T08:02:00+02:00",
+    "predicted": "2026-10-16T08:02:00+02:00"
+   },
+   "delay": {
+    "is_available": true,
+    "minutes": 0
+   }
+  },
+  {
+   "route": {
+    "short_name": "25",
+    "type": 0
+   },
+   "trip": {
+    "headsign": "Bílá Hora"
+   },
+   "stop": {
+    "platform_code": "A"
+   },
+   "departure_timestamp": {
+    "scheduled": "2026-10-16T08:07:00+02:00",
+    "predicted": "2026-10-16T08:08:00+02:00"
+   },
+   "delay": {
+    "is_available": true,
+    "minutes": 1
+   }
+  },
+  {
+   "route": {
+    "short_name": "8",
+    "type": 0
+   },
+   "trip": {
+    "headsign": "Nádraží Podbaba"
+   },
+   "stop": {
+    "platform_code": "A"
+   },
+   "departure_timestamp": {
+    "scheduled": "2026-10-16T08:12:00+02:00",
+    "predicted": "2026-10-16T08:14:00+02:00",
+    "minutes": "4"
+   },
+   "delay": {
+    "is_available": true,
+    "minutes": 2,
+    "seconds": 120
+   }
+  },
+  {
+   "route": {
+    "short_name": "25",
+    "type": 0
+   },
+   "trip": {
+    "headsign": "Bílá Hora"
+   },
+   "stop": {
+    "platform_code": "A"
+   },
+   "departure_timestamp": {
+    "scheduled": "2026-10-16T08:19:00+02:00",
+    "predicted": "2026-10-16T08:19:00+02:00",
+    "minutes": "9"
+   },
+   "delay": {
+    "is_available": true,
+    "minutes": 0,
+    "seconds": 0
+   }
+  },
+  {
+   "route": {
+    "short_name": "8",
+    "type": 0
+   },
+   "trip": {
+    "headsign": "Starý Hloubětín"
+   },
+   "stop": {
+    "platform_code": "B"
+   },
+   "departure_timestamp": {
+    "scheduled": "2026-10-16T08:11:00+02:00",
+    "predicted": "2026-10-16T08:11:00+02:00",
+    "minutes": "1"
+   },
+   "delay": {
+    "is_available": false
+   }
+  },
+  {
+   "route": {
+    "short_name": "136",
+    "type": 3
+   },
+   "trip": {
+    "headsign": "Sídliště Čakovice"
+   },
+   "stop": {
+    "platform_code": "C"
+   },
+   "departure_timestamp": {
+    "scheduled": "2026-10-16T08:13:00+02:00",
+    "predicted": "2026-10-16T08:13:00+02:00"
+   },
+   "delay": {
+    "is_available": true,
+    "minutes": 0
+   }
+  }
+ ]
+}

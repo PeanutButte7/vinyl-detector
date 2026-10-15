@@ -97,6 +97,7 @@ class TuneshineClient:
         animation: str = "dissolve",
         idle: bool = False,
         overridable: bool = False,
+        service_name: str = "Vinyl Detector",
     ) -> None:
         """Upload a 64x64 WebP image to the Tuneshine via multipart/form-data.
 
@@ -114,7 +115,7 @@ class TuneshineClient:
             metadata["artistName"] = artist_name
         if album_name:
             metadata["albumName"] = album_name
-        metadata["serviceName"] = "Vinyl Detector"
+        metadata["serviceName"] = service_name
         metadata["animation"] = animation
         if idle:
             metadata["idle"] = True
@@ -134,15 +135,42 @@ class TuneshineClient:
 
         _retry(_call)
 
-    def clear(self) -> None:
-        """DELETE /image — remove custom image, revert to idle."""
+    def clear(self, preserve_image: bool | None = None) -> None:
+        """DELETE /image — remove custom image, revert to idle.
+
+        preserve_image=False forces a real revert to the idle screen even if the
+        device's "preserve artwork" setting (firmware 2.6.1+) is on.
+        """
         base = self.discover()
+        body = {"preserveImage": preserve_image} if preserve_image is not None else None
 
         def _call() -> None:
-            resp = requests.delete(f"{base}/image", timeout=5)
+            resp = requests.delete(f"{base}/image", json=body, timeout=5)
             resp.raise_for_status()
 
         try:
             _retry(_call)
         except requests.RequestException as exc:
             log.warning("Failed to clear display: %s", exc)
+
+
+# ── State helpers (GET /state) ───────────────────────────────────────────────
+# imageSource: "system" | "local" | "remote"; localMetadata/remoteMetadata carry an
+# "idle" flag. Remote non-idle = a streaming service (e.g. Spotify) is playing.
+
+def music_playing(state: dict, own_service: str) -> bool:
+    """True if something other than an idle image (or our own image) drives the display."""
+    src = state.get("imageSource")
+    remote = state.get("remoteMetadata") or {}
+    local = state.get("localMetadata") or {}
+    if src == "remote" and remote and not remote.get("idle", False):
+        return True
+    if src == "local" and local and not local.get("idle", False) \
+            and local.get("serviceName") != own_service:
+        return True
+    return False
+
+
+def ours_on_screen(state: dict, own_service: str) -> bool:
+    local = state.get("localMetadata") or {}
+    return state.get("imageSource") == "local" and local.get("serviceName") == own_service
