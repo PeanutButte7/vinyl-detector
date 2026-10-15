@@ -26,21 +26,49 @@ def mode_file() -> Path:
     return Path(os.environ.get("TRAM_MODE_FILE", HERE / "mode.json"))
 
 
-def load_mode() -> str:
+VINYL_DISABLED_MSG = "Vinyl listening is turned off. Enable it in the portal first."
+
+
+def load_settings() -> dict:
+    """{"mode": str, "vinyl_enabled": bool}. Missing/corrupt file -> tram, vinyl OFF."""
     try:
-        m = json.loads(mode_file().read_text()).get("mode")
-        return m if m in MODES else DEFAULT_MODE
+        data = json.loads(mode_file().read_text())
+        if not isinstance(data, dict):
+            data = {}
     except (OSError, ValueError):
-        return DEFAULT_MODE
+        data = {}
+    mode = data.get("mode") if data.get("mode") in MODES else DEFAULT_MODE
+    return {"mode": mode, "vinyl_enabled": data.get("vinyl_enabled") is True}
+
+
+def _write_settings(settings: dict) -> None:
+    p = mode_file()
+    tmp = p.with_suffix(".tmp")
+    tmp.write_text(json.dumps(settings))
+    tmp.replace(p)
+
+
+def load_mode() -> str:
+    s = load_settings()
+    return DEFAULT_MODE if s["mode"] == "vinyl" and not s["vinyl_enabled"] else s["mode"]
+
+
+def vinyl_enabled() -> bool:
+    return load_settings()["vinyl_enabled"]
 
 
 def save_mode(mode: str) -> None:
     if mode not in MODES:
         raise ValueError(mode)
-    p = mode_file()
-    tmp = p.with_suffix(".tmp")
-    tmp.write_text(json.dumps({"mode": mode}))
-    tmp.replace(p)
+    s = load_settings()
+    s["mode"] = mode
+    _write_settings(s)
+
+
+def save_vinyl_enabled(enabled: bool) -> None:
+    s = load_settings()
+    s["vinyl_enabled"] = bool(enabled)
+    _write_settings(s)
 
 
 # ── Runners ──────────────────────────────────────────────────────────────────
@@ -62,6 +90,10 @@ class Manager:
         tram_mode.run(self.client, stop, self.status)
 
     def _run_vinyl(self, stop: threading.Event) -> None:
+        # Hard gate: never import the audio stack or open the mic unless explicitly enabled.
+        if not vinyl_enabled():
+            self.status["error"] = VINYL_DISABLED_MSG
+            return
         # Imported lazily so the mic/audio stack is only touched in vinyl mode.
         import vinyl_detector as vd
         loop = asyncio.new_event_loop()
@@ -90,6 +122,8 @@ class Manager:
     def set_mode(self, mode: str, persist: bool = True) -> None:
         if mode not in MODES:
             raise ValueError(f"mode must be one of {MODES}")
+        if mode == "vinyl" and not vinyl_enabled():
+            raise PermissionError(VINYL_DISABLED_MSG)
         with self._lock:
             if persist:
                 save_mode(mode)
@@ -126,12 +160,20 @@ class Manager:
                 log.warning("Previous mode did not stop within %.0fs", timeout)
         self._stop = self._thread = None
 
+    def set_vinyl_enabled(self, enabled: bool) -> None:
+        if not isinstance(enabled, bool):
+            raise ValueError("enabled must be true or false")
+        save_vinyl_enabled(enabled)
+        if not enabled and self.mode == "vinyl":
+            log.info("Vinyl listening disabled -> switching to tram")
+            self.set_mode("tram")
+
     def shutdown(self) -> None:
         with self._lock:
             self._stop_current()
 
     def snapshot(self) -> dict:
-        return {"mode": self.mode, "modes": list(MODES), **{k: v for k, v in self.status.items() if k != "mode"}}
+        return {"mode": self.mode, "modes": list(MODES), "vinyl_enabled": vinyl_enabled(), **{k: v for k, v in self.status.items() if k != "mode"}}
 
 
 # ── Portal ───────────────────────────────────────────────────────────────────
@@ -141,13 +183,20 @@ PAGE = """<!doctype html><html><head><meta charset=utf-8>
 <style>body{font-family:system-ui,sans-serif;background:#0b0b10;color:#eee;margin:0;padding:24px;max-width:480px}
 h1{font-size:20px}.modes{display:flex;gap:8px;margin:16px 0}button{flex:1;padding:16px;font-size:17px;border:0;
 border-radius:12px;background:#22222c;color:#ddd}button.on{background:#e8e8f0;color:#111;font-weight:600}
-pre{background:#16161e;padding:12px;border-radius:10px;font-size:12px;white-space:pre-wrap}</style></head>
-<body><h1>Tuneshine mode</h1><div class=modes id=m></div><pre id=s>loading…</pre>
+button:disabled{opacity:.35}label{display:flex;align-items:center;gap:10px;font-size:16px;margin:8px 0}
+input[type=checkbox]{width:22px;height:22px}#e{color:#f88;min-height:1em}pre{background:#16161e;padding:12px;border-radius:10px;font-size:12px;white-space:pre-wrap}</style></head>
+<body><h1>Tuneshine mode</h1><div class=modes id=m></div>
+<label><input type=checkbox id=v onchange="vin(this.checked)"> Vinyl listening (uses microphone)</label>
+<div id=e></div><pre id=s>loading…</pre>
 <script>
 async function load(){const r=await fetch('/api/status');const j=await r.json();
-document.getElementById('m').innerHTML=j.modes.map(x=>`<button class="${x==j.mode?'on':''}" onclick="go('${x}')">${x}</button>`).join('');
+document.getElementById('m').innerHTML=j.modes.map(x=>`<button class="${x==j.mode?'on':''}" ${x=='vinyl'&&!j.vinyl_enabled?'disabled title="Enable vinyl listening first"':''} onclick="go('${x}')">${x}</button>`).join('');
+document.getElementById('v').checked=j.vinyl_enabled;
 document.getElementById('s').textContent=JSON.stringify(j,null,2)}
-async function go(m){await fetch('/api/mode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:m})});load()}
+async function post(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});
+const j=await r.json();document.getElementById('e').textContent=r.ok?'':(j.error||'error');load()}
+function go(m){post('/api/mode',{mode:m})}
+function vin(on){post('/api/vinyl',{enabled:on})}
 load();setInterval(load,5000)</script></body></html>"""
 
 
@@ -169,13 +218,18 @@ def make_handler(manager: Manager):
             self._send(404, {"error": "not found"})
 
         def do_POST(self):
-            if self.path != "/api/mode":
+            if self.path not in ("/api/mode", "/api/vinyl"):
                 return self._send(404, {"error": "not found"})
             try:
                 n = int(self.headers.get("Content-Length", 0))
-                mode = json.loads(self.rfile.read(n) or b"{}").get("mode")
-                manager.set_mode(mode)
-            except (ValueError, AttributeError) as exc:
+                body = json.loads(self.rfile.read(n) or b"{}")
+                if self.path == "/api/mode":
+                    manager.set_mode(body.get("mode"))
+                else:
+                    manager.set_vinyl_enabled(body.get("enabled"))
+            except PermissionError as exc:
+                return self._send(403, {"error": str(exc), **manager.snapshot()})
+            except (ValueError, AttributeError, TypeError) as exc:
                 return self._send(400, {"error": str(exc)})
             self._send(200, manager.snapshot())
 
@@ -215,7 +269,11 @@ def main() -> None:
     done = threading.Event()
     for s in (signal.SIGINT, signal.SIGTERM):
         signal.signal(s, lambda *_: done.set())
-    mgr.set_mode(a.mode or load_mode(), persist=bool(a.mode))
+    start = a.mode or load_mode()
+    if start == "vinyl" and not vinyl_enabled():
+        log.warning("%s Starting in tram mode.", VINYL_DISABLED_MSG)
+        start = "tram"
+    mgr.set_mode(start, persist=bool(a.mode) and start == a.mode)
     done.wait()
     log.info("Shutting down…")
     if srv:

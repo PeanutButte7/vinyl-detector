@@ -28,7 +28,10 @@ port via `PORTAL_PORT`) or start with `python app.py --mode vinyl`.
   https://api.golemio.cz/api-keys). It is sent as an *idle + overridable* image, so Spotify etc.
   automatically take over and Tuneshine restores it afterwards; while music plays it doesn't push
   at all. After 20:00 it clears its own image (`DELETE /image`, `preserveImage:false`).
-- **vinyl**: the original mic + Shazam detector. The audio stack is only loaded in this mode.
+- **vinyl**: the original mic + Shazam detector. **Off by default:** it can only be selected after
+  ticking *Vinyl listening* in the portal (`POST /api/vinyl {"enabled":true}`, saved in `mode.json`
+  as `vinyl_enabled`). While it's off, the vinyl button is greyed out, `POST /api/mode` returns 403,
+  and the mic/audio/recognition code is never imported. Turning it off while vinyl runs switches to tram.
 - **off**: nothing runs; Tuneshine behaves as stock.
 
 Portal API: `GET /api/status`, `POST /api/mode {"mode":"tram"}`.
