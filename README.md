@@ -16,6 +16,29 @@ An unofficial companion app for [Tuneshine](https://tuneshine.com) that listens 
 - Graceful error states for mic failures and network issues
 - Clean shutdown — clears the display on exit
 
+## Modes: tram / vinyl / off
+
+One service (`app.py`) runs exactly one mode at a time; the choice is saved in `mode.json`
+(default **tram**). Switch it from the web portal at **http://<pi>.local:8080** (LAN only,
+port via `PORTAL_PORT`) or start with `python app.py --mode vinyl`.
+
+- **tram**: from 07:00 to 20:00 (Europe/Prague), every 60 s, shows trams from Poštovská
+  platform A (toward Vysočanská) as 3 rows: last departed (grey), next (bright), the one after,
+  each with clock time and an orange `+N` delay. Data: Golemio PID API (`GOLEMIO_API_KEY`, free at
+  https://api.golemio.cz/api-keys). It is sent as an *idle + overridable* image, so Spotify etc.
+  automatically take over and Tuneshine restores it afterwards; while music plays it doesn't push
+  at all. After 20:00 it clears its own image (`DELETE /image`, `preserveImage:false`).
+- **vinyl**: the original mic + Shazam detector. The audio stack is only loaded in this mode.
+- **off**: nothing runs; Tuneshine behaves as stock.
+
+Portal API: `GET /api/status`, `POST /api/mode {"mode":"tram"}`.
+Preview the tram screen without a device: `python app.py --dry-run` → `preview.png`.
+
+**Upgrading an existing Pi:** the old systemd unit runs `vinyl_detector.py` with no
+arguments; that now hands over to `app.py`, so the auto-sync picks this up with no unit change.
+Just add `GOLEMIO_API_KEY=...` to `.env` on the Pi. (`python vinyl_detector.py --standalone`
+runs the old vinyl-only app.)
+
 ## Requirements
 
 - Python 3.10+
@@ -57,8 +80,11 @@ Optionally, set up a cron job that polls GitHub every minute and auto-restarts t
 ## Usage
 
 ```bash
-# Auto-discover Tuneshine via mDNS and start listening
-python vinyl_detector.py
+# Run the companion (saved mode + portal)
+python app.py
+
+# Old vinyl-only app
+python vinyl_detector.py --standalone
 
 # Skip discovery — connect directly by hostname
 python vinyl_detector.py --host tuneshine-ABCD.local

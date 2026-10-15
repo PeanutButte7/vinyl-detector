@@ -368,4 +368,13 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    # With no CLI args (how the Pi's existing systemd unit starts it), hand over to app.py so
+    # an already-installed service picks up tram mode + the portal after a git pull.
+    # Run `python vinyl_detector.py --standalone` (or with any flags) for the old behavior.
+    if len(sys.argv) == 1 and os.environ.get("VINYL_STANDALONE") != "1":
+        import app
+        app.main()
+    else:
+        if "--standalone" in sys.argv:
+            sys.argv.remove("--standalone")
+        main()

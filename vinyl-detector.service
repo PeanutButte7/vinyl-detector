@@ -1,5 +1,5 @@
 [Unit]
-Description=Vinyl Detector
+Description=Tuneshine companion (tram / vinyl modes + portal)
 After=network-online.target
 Wants=network-online.target
 
@@ -8,7 +8,7 @@ Type=simple
 User=raspberrypi
 WorkingDirectory=/home/raspberrypi/vinyl-detector
 EnvironmentFile=-/home/raspberrypi/vinyl-detector/.env
-ExecStart=/home/raspberrypi/vinyl-detector/.venv/bin/python vinyl_detector.py
+ExecStart=/home/raspberrypi/vinyl-detector/.venv/bin/python app.py
 Restart=on-failure
 RestartSec=10
 

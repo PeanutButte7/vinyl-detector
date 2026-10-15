@@ -15,7 +15,12 @@ sudo apt install -y libportaudio2 python3-pip python3-venv git
 
 echo ""
 read -rp "Enter your Tuneshine ID (the 4 letters/numbers on the back of your device, e.g. A6E0): " TUNESHINE_ID
-echo "TUNESHINE_HOST=tuneshine-${TUNESHINE_ID}.local" > "$REPO_DIR/.env"
+read -rp "Golemio API key for tram mode (free at https://api.golemio.cz/api-keys, Enter to skip): " GOLEMIO_KEY
+{
+  echo "TUNESHINE_HOST=tuneshine-${TUNESHINE_ID}.local"
+  echo "GOLEMIO_API_KEY=${GOLEMIO_KEY}"
+  echo "PORTAL_PORT=8080"
+} > "$REPO_DIR/.env"
 echo "    -> Set to tuneshine-${TUNESHINE_ID}.local"
 echo ""
 
@@ -27,7 +32,7 @@ python3 -m venv .venv
 echo "==> Generating systemd service file..."
 cat > "$REPO_DIR/vinyl-detector.generated.service" <<EOF
 [Unit]
-Description=Vinyl Detector
+Description=Tuneshine companion (tram / vinyl modes + portal)
 After=network-online.target
 Wants=network-online.target
 
@@ -36,7 +41,7 @@ Type=simple
 User=$CURRENT_USER
 WorkingDirectory=$REPO_DIR
 EnvironmentFile=-$REPO_DIR/.env
-ExecStart=$REPO_DIR/.venv/bin/python vinyl_detector.py
+ExecStart=$REPO_DIR/.venv/bin/python app.py
 Restart=on-failure
 RestartSec=10
 
